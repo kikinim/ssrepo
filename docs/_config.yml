@@ -1,0 +1,11 @@
+//docs/_config.yml
+title: "내 프로젝트"
+description: "Jekyll 기반 GitHub Pages 예시"
+url: "https://kikinim.github.io"     # 본인 GitHub ID로
+baseurl: "/just-the-docs"            # 저장소 이름으로
+theme: jekyll-theme-cayman           # 기본 테마 (just-the-docs 대신 간단한 테마)
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  math_engine: mathjax
