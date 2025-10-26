@@ -1,0 +1,10 @@
+#//Gemfile
+# 로컬 미리보기용 번들 정의. GitHub Pages와 버전 호환을 위해 github-pages 메타젬을 사용.
+# (Windows라면 Ruby+Devkit 설치 후 이 Gemfile로 bundle install)
+source "https://rubygems.org"
+
+# GitHub Pages 표준 번들(여기에 jekyll, jekyll-remote-theme 포함)
+gem "github-pages", group: :jekyll_plugins
+
+# 라이브 리로드 편의(선택)
+gem "webrick", "~> 1.8"

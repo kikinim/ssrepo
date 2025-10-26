@@ -1,0 +1,9 @@
+/*//docs/assets/css/custom.css */
+/* iPhone 스타일 느낌: 좌정렬, 파스텔톤(파란색 배제), 가독성↑ */
+:root{
+  --jtd-primary: #7e6af0;  /* 보라 파스텔 */
+  --jtd-link-color: #8f7df5;
+}
+.main-content{ text-align:left; }
+.site-title, h1,h2,h3{ font-weight:700; letter-spacing: .1px; }
+.nav-list .nav-list-item .nav-list-link{ border-radius:10px; }
