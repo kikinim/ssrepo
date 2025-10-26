@@ -7,9 +7,7 @@ nav_order: 1
 
 # 내 프로젝트 홈
 
-이건 **Jekyll** + **just-the-docs**로 만든 GitHub Pages 사이트입니다.
-
-**수식 예시(굵게 강조):**
+이 사이트는 **just-the-docs** 테마로 렌더링됩니다.
 
 $$
 \mathbf{E = mc^2}

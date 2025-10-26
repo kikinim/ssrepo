@@ -1,14 +1,17 @@
 #/docs/_config.yml
-# Jekyll 전역 설정 (프로젝트 사이트용). YAML은 #만 주석으로 허용됨.
+# 프로젝트 사이트 필수: url/baseurl 정확히 설정
 title: "내 프로젝트"
 description: "Jekyll + just-the-docs on GitHub Pages"
-url: "https://kikinim.github.io"        # 본인 GitHub ID로 맞음
-baseurl: "/just-the-docs"               # 저장소 이름(예: just-the-docs)로 변경
 
-# just-the-docs 테마를 원격으로 사용 (fork 불필요)
+# ↓ 본인 GitHub ID로
+url: "https://kikinim.github.io"
+# ↓ 저장소 이름로 (예: repo 이름이 just-the-docs 라면)
+baseurl: "/just-the-docs"
+
+# just-the-docs를 원격 테마로 사용 (fork 불필요)
 remote_theme: just-the-docs/just-the-docs
 
-# 옵션들
+# 옵션
 search_enabled: true
 aux_links:
   "GitHub Repo":
@@ -18,3 +21,7 @@ markdown: kramdown
 kramdown:
   input: GFM
   math_engine: mathjax
+
+# (중요) GitHub Pages에서 remote_theme가 동작하도록 권장 플러그인
+plugins:
+  - jekyll-remote-theme
