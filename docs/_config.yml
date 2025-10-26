@@ -3,7 +3,7 @@
 title: "내 프로젝트"
 description: "Jekyll + just-the-docs Project Site"
 url: "https://kikinim.github.io"     # ← 본인 GitHub ID로
-baseurl: "/myrepo"                    # ← 저장소 이름로 (예: /just-the-docs 가 아니라 /myrepo)
+baseurl: "/ssrepo"                    # ← 저장소 이름로 (예: /just-the-docs 가 아니라 /myrepo)
 
 # just-the-docs 원격 테마 사용 (fork 불필요)
 remote_theme: just-the-docs/just-the-docs
@@ -12,7 +12,7 @@ remote_theme: just-the-docs/just-the-docs
 search_enabled: true
 aux_links:
   "GitHub Repo":
-    - "https://github.com/kikinim/myrepo"   # ← 본인 repo 링크
+    - "https://github.com/kikinim/ssrepo"   # ← 본인 repo 링크
 
 # 플러그인 (remote_theme 동작)
 plugins:
