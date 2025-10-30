@@ -1,4 +1,4 @@
-## Tailwind 설정
+8## Tailwind 설정
 
 카드처럼 안 보이면 거의 100% Tailwind가 안 붙어있기 때문입니다. 
 아래 순서대로 점검/수정하면 카드 스타일로 보일 것입니다.
@@ -646,3 +646,340 @@ app.include_router(auth_router)
 * 약한 비번 → “비밀번호가 너무 약합니다”
 
 필요하면 비밀번호 해시(bcrypt), DB 연동(SQLModel/SQLAlchemy), 이메일 검증, 이메일 인증(OTP)도 바로 확장해줄게요.
+
+
+좋아요. 지금까지 이 대화방에서 다뤘던 “PCS Simulation 기술 칼럼 게시판 구축 + 인증 시스템 + API 통합 오류 분석” 전 과정을
+기술 문서 형식(Technical Documentation) 으로 아래처럼 정리해드릴게요.
+모든 구조, 주요 파일, 오류 원인과 해결 내역까지 포함되어 있습니다.
+
+🧭 PCS Simulation — 기술 칼럼 게시판 통합 기술 문서 (v2025.10.30)
+
+
+---
+
+📂 1. 프로젝트 전체 구조
+
+Frontend (/frontend)
+
+frontend/
+│
+├─ src/
+│  ├─ assets/
+│  │   └─ react.svg
+│  │
+│  ├─ components/
+│  │   ├─ layout/
+│  │   │   ├─ Sidebar.jsx
+│  │   │   └─ Topbar.jsx
+│  │   ├─ charts/
+│  │   │   └─ PumpChartCard.jsx
+│  │   └─ cards/
+│  │       └─ RequestQuoteCard.jsx
+│  │
+│  ├─ lib/
+│  │   ├─ AuthContext.jsx        ← 인증 상태관리 (로그인, 회원가입, 토큰 저장)
+│  │   └─ apiClient.jsx          ← fetch + Bearer 토큰 자동 첨부
+│  │
+│  ├─ pages/
+│  │   ├─ Auth/
+│  │   │   ├─ LoginPage.jsx
+│  │   │   └─ RegisterPage.jsx
+│  │   │
+│  │   ├─ board/                 ← 기술 칼럼 게시판
+│  │   │   ├─ BoardList.jsx
+│  │   │   ├─ PostEditor.jsx
+│  │   │   └─ PostView.jsx
+│  │   │
+│  │   └─ dashboard/
+│  │       └─ Dashboard.jsx
+│  │
+│  ├─ routes/
+│  │   └─ pathNames.js
+│  │
+│  ├─ App.jsx
+│  ├─ main.jsx
+│  ├─ index.css
+│  └─ App.css
+│
+└─ vite.config.js
+
+
+---
+
+⚙️ 2. 주요 파일 내용
+
+(1) /src/lib/AuthContext.jsx
+
+로그인/회원가입을 담당하는 Context Provider
+
+localStorage에 auth_tokens 저장
+
+Bearer 토큰 자동 첨부
+
+/api/me, /api/auth/login, /api/auth/register 엔드포인트 통합 관리
+
+login(), register(), signOut() 제공
+
+
+핵심 포인트
+
+const login = async ({ id, password }) => {
+  const email = id.trim().toLowerCase();
+  const data = await reqJson("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  saveTokens(data);
+  const me = await reqJson("/api/me");
+  setUser(me);
+  return me;
+};
+
+
+---
+
+(2) /src/lib/apiClient.jsx
+
+모든 API 호출 통합 (GET/POST/PUT/DELETE)
+
+Authorization: Bearer 자동 첨부
+
+쿼리스트링 자동 처리
+
+JSON, FormData 업로드 둘 다 지원
+
+
+최종 안정화 버전
+
+//src/lib/apiClient.jsx
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+export function getAccessToken() {
+  try {
+    const raw = localStorage.getItem("auth_tokens");
+    if (raw) return JSON.parse(raw).access_token || "";
+  } catch {}
+  return "";
+}
+
+async function fetchJson(path, { method="GET", query, body, headers } = {}) {
+  const token = getAccessToken();
+  const h = new Headers(headers || {});
+  if (body && !(body instanceof FormData) && !h.has("Content-Type")) {
+    h.set("Content-Type", "application/json");
+  }
+  if (token) h.set("Authorization", `Bearer ${token}`);
+
+  let url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  if (query) {
+    const qs = new URLSearchParams(query).toString();
+    url += (url.includes("?") ? "&" : "?") + qs;
+  }
+
+  const res = await fetch(url, { method, headers: h, body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined });
+  if (!res.ok) {
+    let msg = res.statusText;
+    try { const j = await res.json(); if (j?.detail) msg = j.detail; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+const apiClient = {
+  get: (path, opts={}) => fetchJson(path, { ...opts, method: "GET" }),
+  post: (path, body, opts={}) => fetchJson(path, { ...opts, method: "POST", body }),
+  put: (path, body, opts={}) => fetchJson(path, { ...opts, method: "PUT", body }),
+  delete: (path, opts={}) => fetchJson(path, { ...opts, method: "DELETE" }),
+};
+
+export default apiClient;
+
+
+---
+
+(3) /src/pages/board/BoardList.jsx
+
+카테고리별(전체, pump, scrubber, chiller, 수학, 공학, ai)
+
+검색어(q) 필터
+
+테이블형 목록 표시
+
+apiClient.get("/api/board/posts", { query: { cat, q, offset, limit }})
+
+
+예시 구조
+
+const CATS = ["all","pump","scrubber","chiller","수학","공학","ai"];
+
+<div className="flex flex-wrap gap-2">
+  {CATS.map(c => (
+    <button key={c} onClick={() => setCat(c)} className={`px-3 py-1 rounded-full border ${cat===c?"bg-slate-800 text-white":"bg-white text-slate-700"}`}>
+      {c==="all"?"전체":c}
+    </button>
+  ))}
+</div>
+
+
+---
+
+(4) /src/pages/board/PostEditor.jsx
+
+블로그 수준의 글 작성/수정 지원
+
+붙여넣기 이미지 자동 업로드 (FormData)
+
+글 저장 시 /api/board/posts 로 POST/PUT
+
+category 필드 추가 가능
+
+
+
+---
+
+(5) /src/pages/board/PostView.jsx
+
+단일 게시물 보기 + 수정/삭제
+
+첨부 이미지 grid 표시
+
+isAuthed 사용해 로그인한 사용자만 수정/삭제 가능
+
+
+
+---
+
+🧩 3. 서버 구조
+
+Backend (/backend)
+
+backend/
+│
+├─ main.py           ← FastAPI 진입점
+├─ db.py             ← SQLite 스키마 및 초기화
+├─ auth.py           ← JWT 발급 및 인증 유틸
+├─ static/           ← 업로드 이미지 저장
+└─ app.db            ← SQLite 데이터베이스
+
+
+---
+
+🧱 4. DB 스키마 (최종 안정화)
+
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT DEFAULT 'user',
+  department TEXT,
+  knox_email TEXT,
+  created_at TEXT
+);
+
+CREATE TABLE posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  body_md TEXT NOT NULL,
+  author_id INTEGER NOT NULL,
+  author_name TEXT NOT NULL,
+  category TEXT,
+  likes INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE attachments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER,
+  filename TEXT,
+  url TEXT,
+  mime TEXT,
+  size INTEGER,
+  created_at TEXT NOT NULL
+);
+
+
+---
+
+⚠️ 5. 주요 오류 및 해결 내역
+
+오류 메시지	원인	해결 방법
+
+Only one default export allowed per module.	apiClient.jsx에 BoardList 컴포넌트 코드가 잘못 붙어 있었음	apiClient와 BoardList 파일 분리
+LoginPage.jsx: id is not defined	useState 미정의 → value={id} 사용	const [id,setId]=useState("") 추가
+missing bearer token	StrictMode 중복렌더링으로 로그인 두 번 실행	StrictMode 해제 또는 useEffect 조건부처리
+500 (Internal Server Error) on /api/board/posts	백엔드에 posts 테이블/category 컬럼 미존재	DB 스키마 확장(ALTER TABLE posts ADD COLUMN category) 및 FastAPI 필터 추가
+500 Internal Server Error on /api/board/posts?cat=pump	백엔드 list_posts()에 cat 파라미터 미지원	if cat != "all": where.append("category=?") 추가
+Login is not a function	AuthContext export/import 경로 오류	useAuth()로 context 연결 후 AuthProvider 상위 감싸기
+이미지 업로드 실패	FormData 사용 시 Content-Type 수동 설정	apiClient.uploadForm()으로 전송, Content-Type 제거
+
+
+
+---
+
+🚀 6. 개선 후 최종 동작 시나리오
+
+1. 사용자가 /login 접속 → 로그인 성공 시 토큰 저장
+
+
+2. /board 접속 → /api/board/posts?cat=all 로 목록 불러옴
+
+
+3. 카테고리 버튼 클릭 → cat 파라미터 갱신
+
+
+4. 검색어 입력 → 실시간 쿼리 파라미터 반영
+
+
+5. “새 글” 클릭 → /board/new 이동 → 제목+본문+카테고리 입력
+
+
+6. 이미지 붙여넣기/드롭 시 /api/board/upload 자동 호출
+
+
+7. 저장 시 /api/board/posts 로 POST
+
+
+8. 목록 갱신 → 새 게시물 정상 반영
+
+
+
+
+---
+
+✅ 7. 향후 확장 계획
+
+🔹 좋아요(likes) 증가 API 추가 (PATCH /api/board/posts/{id}/like)
+
+🔹 게시판 댓글 테이블(comments) 추가
+
+🔹 category 기반 통계 그래프 (예: pump/scrubber 비율 차트)
+
+🔹 관리자 전용 게시물 삭제/관리 기능
+
+
+
+---
+
+📘 요약
+
+항목	구현 상태	설명
+
+사용자 인증 (AuthContext)	✅ 완료	로그인/회원가입 + 토큰 유지
+게시판 CRUD API	✅ 완료	카테고리/검색/좋아요 포함
+SQLite 스키마	✅ 완료	users, posts, attachments 테이블 구성
+이미지 업로드	✅ 완료	FormData 업로드 + 미리보기
+오류 해결	✅ 완료	500 / 중복 export / id undefined 등
+UI 구성	✅ 완료	Tailwind 기반 표, 카테고리 탭
+
+
+
+---
+
+원하신다면 이 문서 버전을
+/docs/techspecs/board_system_v1.md
+파일 형태로 만들어드릴 수도 있습니다.
+
+👉 계속해서 “댓글 기능”이나 “좋아요 기능”을 추가하시겠어요?
